@@ -132,6 +132,10 @@
     <ClCompile Include="AntiProcess.cpp" />
     <ClCompile Include="CodeIntegrity.cpp" />
     <ClCompile Include="Core.cpp" />
+    <ClCompile Include="Utils.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

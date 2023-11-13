@@ -37,16 +37,16 @@ inline bool HypervisorDebugTriggered()
     return false;
 }
 
-inline bool AntiDebugTriggered()
+inline DWORD AntiDebugTriggered()
 {
     if (BasicDebugTriggered())
-        return true;
+        return 1;
 
     if (HWBPDebugTriggered())
-        return true;
+        return 2;
 
     if (HypervisorDebugTriggered())
-        return true;
+        return 3;
 
-    return false;
+    return 0;
 }

@@ -127,10 +127,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AntiDebug.cpp" />
-    <ClCompile Include="AntiLibrary.cpp" />
-    <ClCompile Include="AntiProcess.cpp" />
-    <ClCompile Include="CodeIntegrity.cpp" />
+    <ClInclude Include="AntiDebug.hpp">
+      <FileType>CppHeader</FileType>
+    </ClInclude>
+    <ClInclude Include="AntiLibrary.hpp">
+      <FileType>CppHeader</FileType>
+    </ClInclude>
+    <ClInclude Include="AntiProcess.hpp">
+      <FileType>CppHeader</FileType>
+    </ClInclude>
+    <ClInclude Include="CodeIntegrity.hpp">
+      <FileType>CppHeader</FileType>
+    </ClInclude>
     <ClCompile Include="Core.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>

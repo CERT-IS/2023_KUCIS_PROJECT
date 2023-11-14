@@ -1,5 +1,5 @@
+#pragma once
 #include <Windows.h>
-
 #include <list>
 #include <string>
 typedef struct _SIGN_COUNTER_SIGN {

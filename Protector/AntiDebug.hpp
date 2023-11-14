@@ -1,8 +1,17 @@
 #include <Windows.h>
-
+#include "AntiLibrary.hpp"
 inline bool BasicDebugTriggered()
 {
     if (IsDebuggerPresent())
+        return true;
+    //get peb
+#ifdef _WIN64
+    PPEB peb = (PPEB)__readgsqword(0x60);
+    #else
+    PPEB peb = (PPEB)__readfsdword(0x30);
+    #endif
+    auto NtGlobalFlag = peb->NtGlobalFlag;
+    if (NtGlobalFlag & 0x70)
         return true;
 
     return false;

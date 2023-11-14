@@ -1,3 +1,8 @@
+#include <Windows.h>
+#include <TlHelp32.h>
+#include <Psapi.h>
+#include "Utils.hpp"
+
 typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
 {
 	PVOID Object;
@@ -240,17 +245,234 @@ typedef enum _OBJECT_INFORMATION_CLASS
 	ObjectSessionObjectInformation,
 	MaxObjectInfoClass
 } OBJECT_INFORMATION_CLASS;
-typedef struct _OBJECT_BASIC_INFORMATION
+
+typedef enum _PROCESSINFOCLASS
 {
-	ULONG Attributes;
-	ACCESS_MASK GrantedAccess;
-	ULONG HandleCount;
-	ULONG PointerCount;
-	ULONG PagedPoolCharge;
-	ULONG NonPagedPoolCharge;
-	ULONG Reserved[3];
-	ULONG NameInfoSize;
-	ULONG TypeInfoSize;
-	ULONG SecurityDescriptorSize;
-	LARGE_INTEGER CreationTime;
-} OBJECT_BASIC_INFORMATION, * POBJECT_BASIC_INFORMATION;
+	ProcessBasicInformation, // q: PROCESS_BASIC_INFORMATION, PROCESS_EXTENDED_BASIC_INFORMATION
+	ProcessQuotaLimits, // qs: QUOTA_LIMITS, QUOTA_LIMITS_EX
+	ProcessIoCounters, // q: IO_COUNTERS
+	ProcessVmCounters, // q: VM_COUNTERS, VM_COUNTERS_EX, VM_COUNTERS_EX2
+	ProcessTimes, // q: KERNEL_USER_TIMES
+	ProcessBasePriority, // s: KPRIORITY
+	ProcessRaisePriority, // s: ULONG
+	ProcessDebugPort, // q: HANDLE
+	ProcessExceptionPort, // s: HANDLE
+	ProcessAccessToken, // s: PROCESS_ACCESS_TOKEN
+	ProcessLdtInformation, // qs: PROCESS_LDT_INFORMATION // 10
+	ProcessLdtSize, // s: PROCESS_LDT_SIZE
+	ProcessDefaultHardErrorMode, // qs: ULONG
+	ProcessIoPortHandlers, // (kernel-mode only)
+	ProcessPooledUsageAndLimits, // q: POOLED_USAGE_AND_LIMITS
+	ProcessWorkingSetWatch, // q: PROCESS_WS_WATCH_INFORMATION[]; s: void
+	ProcessUserModeIOPL,
+	ProcessEnableAlignmentFaultFixup, // s: BOOLEAN
+	ProcessPriorityClass, // qs: PROCESS_PRIORITY_CLASS
+	ProcessWx86Information,
+	ProcessHandleCount, // q: ULONG, PROCESS_HANDLE_INFORMATION // 20
+	ProcessAffinityMask, // s: KAFFINITY
+	ProcessPriorityBoost, // qs: ULONG
+	ProcessDeviceMap, // qs: PROCESS_DEVICEMAP_INFORMATION, PROCESS_DEVICEMAP_INFORMATION_EX
+	ProcessSessionInformation, // q: PROCESS_SESSION_INFORMATION
+	ProcessForegroundInformation, // s: PROCESS_FOREGROUND_BACKGROUND
+	ProcessWow64Information, // q: ULONG_PTR
+	ProcessImageFileName, // q: UNICODE_STRING
+	ProcessLUIDDeviceMapsEnabled, // q: ULONG
+	ProcessBreakOnTermination, // qs: ULONG
+	ProcessDebugObjectHandle, // q: HANDLE // 30
+	ProcessDebugFlags, // qs: ULONG
+	ProcessHandleTracing, // q: PROCESS_HANDLE_TRACING_QUERY; s: size 0 disables, otherwise enables
+	ProcessIoPriority, // qs: IO_PRIORITY_HINT
+	ProcessExecuteFlags, // qs: ULONG
+	ProcessResourceManagement,
+	ProcessCookie, // q: ULONG
+	ProcessImageInformation, // q: SECTION_IMAGE_INFORMATION
+	ProcessCycleTime, // q: PROCESS_CYCLE_TIME_INFORMATION // since VISTA
+	ProcessPagePriority, // q: ULONG
+	ProcessInstrumentationCallback, // 40
+	ProcessThreadStackAllocation, // s: PROCESS_STACK_ALLOCATION_INFORMATION, PROCESS_STACK_ALLOCATION_INFORMATION_EX
+	ProcessWorkingSetWatchEx, // q: PROCESS_WS_WATCH_INFORMATION_EX[]
+	ProcessImageFileNameWin32, // q: UNICODE_STRING
+	ProcessImageFileMapping, // q: HANDLE (input)
+	ProcessAffinityUpdateMode, // qs: PROCESS_AFFINITY_UPDATE_MODE
+	ProcessMemoryAllocationMode, // qs: PROCESS_MEMORY_ALLOCATION_MODE
+	ProcessGroupInformation, // q: USHORT[]
+	ProcessTokenVirtualizationEnabled, // s: ULONG
+	ProcessConsoleHostProcess, // q: ULONG_PTR
+	ProcessWindowInformation, // q: PROCESS_WINDOW_INFORMATION // 50
+	ProcessHandleInformation, // q: PROCESS_HANDLE_SNAPSHOT_INFORMATION // since WIN8
+	ProcessMitigationPolicy, // s: PROCESS_MITIGATION_POLICY_INFORMATION
+	ProcessDynamicFunctionTableInformation,
+	ProcessHandleCheckingMode,
+	ProcessKeepAliveCount, // q: PROCESS_KEEPALIVE_COUNT_INFORMATION
+	ProcessRevokeFileHandles, // s: PROCESS_REVOKE_FILE_HANDLES_INFORMATION
+	ProcessWorkingSetControl, // s: PROCESS_WORKING_SET_CONTROL
+	ProcessHandleTable, // since WINBLUE
+	ProcessCheckStackExtentsMode,
+	ProcessCommandLineInformation, // q: UNICODE_STRING // 60
+	ProcessProtectionInformation, // q: PS_PROTECTION
+	ProcessMemoryExhaustion, // PROCESS_MEMORY_EXHAUSTION_INFO // since THRESHOLD
+	ProcessFaultInformation, // PROCESS_FAULT_INFORMATION
+	ProcessTelemetryIdInformation, // PROCESS_TELEMETRY_ID_INFORMATION
+	ProcessCommitReleaseInformation, // PROCESS_COMMIT_RELEASE_INFORMATION
+	ProcessDefaultCpuSetsInformation,
+	ProcessAllowedCpuSetsInformation,
+	ProcessReserved1Information,
+	ProcessReserved2Information,
+	ProcessSubsystemProcess, // 70
+	ProcessJobMemoryInformation, // PROCESS_JOB_MEMORY_INFO
+	ProcessInPrivate, // since THRESHOLD2
+	ProcessRaiseUMExceptionOnInvalidHandleClose,
+	MaxProcessInfoClass
+} PROCESSINFOCLASS;
+
+typedef NTSTATUS(NTAPI* t_NtQuerySystemInformation)(_In_ SYSTEM_INFORMATION_CLASS SystemInformationClass, _Out_opt_ PVOID SystemInformation, _In_ ULONG SystemInformationLength, _Out_opt_ PULONG ReturnLength);
+typedef NTSTATUS(NTAPI* t_NtQueryObject)(_In_opt_ HANDLE Handle, _In_ OBJECT_INFORMATION_CLASS ObjectInformationClass, _Out_opt_ PVOID ObjectInformation, _In_ ULONG ObjectInformationLength, _Out_opt_ PULONG ReturnLength);
+typedef NTSTATUS(NTAPI* t_NtQueryInformationProcess)(_In_ HANDLE ProcessHandle, _In_ PROCESSINFOCLASS ProcessInformationClass, _Out_ PVOID ProcessInformation, _In_ ULONG ProcessInformationLength, _Out_opt_ PULONG ReturnLength);
+#define STATUS_INFO_LENGTH_MISMATCH 0xC0000004
+
+t_NtQuerySystemInformation NtQuerySystemInformation = (t_NtQuerySystemInformation)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQuerySystemInformation");
+t_NtQueryObject NtQueryObject = (t_NtQueryObject)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQueryObject");
+
+const wchar_t* BlacklistedWindowName[] = {
+    L"OllyDbg",
+    L"IDA Pro",
+    L"Cheat Engine",
+    L"Process Hacker",
+    L"Process Explorer",
+    L"Process Monitor"
+};
+const wchar_t* BlacklistedProcessName[] = {
+    L"ollydbg.exe",
+    L"idaq.exe",
+    L"idaq64.exe",
+    L"ida.exe",
+    L"ida64.exe",
+    L"Cheat Engine.exe",
+    L"cheatengine-x86_64.exe",
+    L"cheatengine-i386.exe",
+    L"Process Hacker.exe",
+    L"ProcessHacker.exe",
+    L"procdump.exe",
+    L"procmon.exe"
+};
+
+BOOL WINAPI EnumWindowsCallback(HWND hWnd, LPARAM lParam)
+{
+    wchar_t WindowName[256] = { 0 };
+    GetWindowTextW(hWnd, WindowName, 256);
+    for (int i = 0; i < sizeof(BlacklistedWindowName) / sizeof(wchar_t*); i++)
+    {
+        if (wcsstr(WindowName, BlacklistedWindowName[i]))
+        {
+            GetWindowThreadProcessId(hWnd, (LPDWORD)lParam);
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+__forceinline void CheckProcessHasMyHandle(void)
+{
+    ULONG returnLength = 0;
+    NTSTATUS status = NtQuerySystemInformation(SystemExtendedHandleInformation, nullptr, 0, &returnLength);
+    if (status != STATUS_INFO_LENGTH_MISMATCH)
+        return;
+
+    ULONG bufferSize = returnLength;
+    PSYSTEM_HANDLE_INFORMATION_EX handleInfo = (PSYSTEM_HANDLE_INFORMATION_EX)malloc(bufferSize);
+    if (!handleInfo)
+        return;
+
+    status = NtQuerySystemInformation(SystemExtendedHandleInformation, handleInfo, bufferSize, &returnLength);
+    if (status)
+    {
+        free(handleInfo);
+        return;
+    }
+
+    //loop handles
+    for (int i = 0; i < handleInfo->NumberOfHandles; i++)
+    {
+        const auto& handle = handleInfo->Handles[i];
+
+        if (handle.ObjectTypeIndex == 7 && handle.UniqueProcessId != GetCurrentProcessId()) //Process
+        {
+            HANDLE hProcess = OpenProcess(PROCESS_DUP_HANDLE | PROCESS_QUERY_INFORMATION, FALSE, handle.UniqueProcessId);
+            if (!hProcess)
+                continue;
+            HANDLE hDupHandle = nullptr;
+            DuplicateHandle(hProcess, (HANDLE)handle.HandleValue, GetCurrentProcess(), &hDupHandle, 0, FALSE, 0);
+            if (!hDupHandle)
+            {
+                CloseHandle(hProcess);
+                continue;
+            }
+
+            //check handle access has PROCESS_QUERY_INFORMATION or PROCESS_QUERY_LIMITED_INFORMATION
+            if ((handle.GrantedAccess & PROCESS_QUERY_INFORMATION) == 0 && (handle.GrantedAccess & PROCESS_QUERY_LIMITED_INFORMATION) == 0)
+            {
+                CloseHandle(hProcess);
+                CloseHandle(hDupHandle);
+                continue;
+            }
+
+            if (GetProcessId(hDupHandle) != GetCurrentProcessId())
+            {
+                CloseHandle(hProcess);
+                CloseHandle(hDupHandle);
+                continue;
+            }
+            //조사 드가자.
+
+            wchar_t path[MAX_PATH] = { 0 };
+            GetModuleFileNameExW(hProcess, nullptr, path, MAX_PATH);
+
+            std::string signType;
+            std::wstring catalogFile;
+            std::list<SIGN_NODE_INFO> SignChain;
+            if (!CheckFileDigitalSignature(path, nullptr, catalogFile, signType, SignChain))
+            {
+                //TODO: Send log to server.
+
+            }
+
+            CloseHandle(hProcess);
+            CloseHandle(hDupHandle);
+        }
+    }
+}
+__forceinline void CheckProcess(void)
+{
+    CheckProcessHasMyHandle();
+    DWORD detectedProcessId = 0;
+    EnumWindows(EnumWindowsCallback, (LPARAM)&detectedProcessId);
+
+    if (detectedProcessId)
+    {
+        //TODO: Send log to server.
+        HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, detectedProcessId);
+        if (hProcess)
+        {
+            TerminateProcess(hProcess, 0);
+            CloseHandle(hProcess);
+        }
+    }
+    PROCESSENTRY32 pe32{};
+    pe32.dwSize = sizeof(PROCESSENTRY32);
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnapshot == INVALID_HANDLE_VALUE)
+        return;
+
+    BOOL bRet = Process32First(hSnapshot, &pe32);
+    while (bRet)
+    {
+        for (int i = 0; i < sizeof(BlacklistedProcessName) / sizeof(wchar_t*); i++)
+        {
+            if (wcsstr(pe32.szExeFile, BlacklistedProcessName[i]))
+            {
+                //TODO: Send log to server.
+            }
+        }
+        bRet = Process32Next(hSnapshot, &pe32);
+    }
+    CloseHandle(hSnapshot);
+}

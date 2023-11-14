@@ -1,9 +1,13 @@
+#pragma once
 #include <Windows.h>
 #include <stdio.h>
 #include <string>
 #include "Utils.hpp"
+#ifdef _WIN64
 #pragma comment(linker, "/INCLUDE:_tls_used") //Use TLS
-
+#else
+#pragma comment(linker, "/INCLUDE:__tls_used") //Use TLS
+#endif
 typedef struct _PEB_LDR_DATA
 {
     ULONG Length;
@@ -150,9 +154,6 @@ void NTAPI TlsCallback(PVOID DllHandle, DWORD dwReason, PVOID Reserved)
 {
     if (dwReason == DLL_PROCESS_ATTACH)
     {
-        //Check if debugger is present
-        if (IsDebuggerPresent())
-            ExitProcess(0);
         printf("Checking library %p\n", DllHandle);
     }
 }
@@ -191,8 +192,7 @@ __forceinline void CheckLibrary()
             printf("Failed to check digital signature of %ws\n", path);
             continue;
         }
-        printf("file: %ws\n", path);
-        PrintSignatureInfo(signType, catalogFile, SignChain);
+        //printf("file: %ws\n", path);
+        //PrintSignatureInfo(signType, catalogFile, SignChain);
     }
-    system("pause");
 }

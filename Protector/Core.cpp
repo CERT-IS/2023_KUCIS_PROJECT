@@ -1,8 +1,7 @@
 #include "AntiProcess.hpp"
 #include "CodeIntegrity.hpp"
-inline bool AntiDebugTriggered();
-__forceinline void CheckLibrary();
-__forceinline void CheckProcess(void);
+#include "AntiLibrary.hpp"
+#include "AntiDebug.hpp"
 
 DWORD64 lastDebugCheckTime = 0;
 DWORD64 lastLibraryCheckTime = 0;

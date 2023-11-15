@@ -152,10 +152,7 @@ typedef struct _PEB
 } PEB, * PPEB;
 void NTAPI TlsCallback(PVOID DllHandle, DWORD dwReason, PVOID Reserved)
 {
-    if (dwReason == DLL_PROCESS_ATTACH)
-    {
-        printf("Checking library %p\n", DllHandle);
-    }
+    //TODO: CreateThread detection
 }
 #pragma data_seg(".CRT$XLX")
 PIMAGE_TLS_CALLBACK p_thread_callback[] = { TlsCallback, 0 };
@@ -179,6 +176,10 @@ __forceinline void CheckLibrary()
         //get module
         auto mod = CONTAINING_RECORD(curr, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
 
+        if (mod->DllBase == GetModuleHandle(NULL))
+        {
+            continue;
+        }
         //get module name
         auto path = malloc(mod->FullDllName.Length + sizeof(wchar_t));
         memcpy(path, mod->FullDllName.Buffer, mod->FullDllName.Length);
@@ -189,7 +190,7 @@ __forceinline void CheckLibrary()
         std::list<SIGN_NODE_INFO> SignChain;
         if (!CheckFileDigitalSignature((LPCWSTR)path, NULL, catalogFile, signType, SignChain))
         {
-            printf("Failed to check digital signature of %ws\n", path);
+            printf("DETECTED/LDR/CheckLibrary: %ws\n", path);
             continue;
         }
         //printf("file: %ws\n", path);

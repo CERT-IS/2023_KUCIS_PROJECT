@@ -49,7 +49,7 @@ DWORD WINAPI AntiCodeIntegrityThread(LPVOID lpParam)
         Sleep(5000);
         if (!verifier->Verify())
         {
-            //TODO: Send log to server.
+            printf("DETECTED/CODE_INTEGRITY/CodeIntegrity check failed\n");
         }
         lastCodeIntegrityCheckTime = GetTickCount64();
     }
@@ -60,18 +60,22 @@ __forceinline void CheckThreadWorking(void)
     DWORD64 currentTime = GetTickCount64();
     if (currentTime - lastDebugCheckTime > 10000 && lastDebugCheckTime != 0)
     {
+        printf("DETECTED/SUSPEND_THREAD/AntiDebugThread\n");
         __debugbreak(); //force make exception to crash
     }
     if (currentTime - lastLibraryCheckTime > 10000 && lastLibraryCheckTime != 0)
     {
+        printf("DETECTED/SUSPEND_THREAD/AntiLibraryThread\n");
         __debugbreak(); //force make exception to crash
     }
     if (currentTime - lastProcessCheckTime > 10000 && lastProcessCheckTime != 0)
     {
+        printf("DETECTED/SUSPEND_THREAD/AntiProcessThread\n");
         __debugbreak(); //force make exception to crash
     }
     if (currentTime - lastCodeIntegrityCheckTime > 10000 && lastCodeIntegrityCheckTime != 0)
     {
+        printf("DETECTED/SUSPEND_THREAD/AntiCodeIntegrityThread\n");
         __debugbreak(); //force make exception to crash
     }
 }

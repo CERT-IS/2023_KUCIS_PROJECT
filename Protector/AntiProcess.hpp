@@ -364,7 +364,9 @@ BOOL WINAPI EnumWindowsCallback(HWND hWnd, LPARAM lParam)
     {
         if (wcsstr(WindowName, BlacklistedWindowName[i]))
         {
-            GetWindowThreadProcessId(hWnd, (LPDWORD)lParam);
+            //GetWindowThreadProcessId(hWnd, (LPDWORD)lParam);
+			std::wstring* detectedWindowName = (std::wstring*)lParam;
+			*detectedWindowName = WindowName;
             return FALSE;
         }
     }
@@ -373,21 +375,24 @@ BOOL WINAPI EnumWindowsCallback(HWND hWnd, LPARAM lParam)
 __forceinline void CheckProcessHasMyHandle(void)
 {
     ULONG returnLength = 0;
-    NTSTATUS status = NtQuerySystemInformation(SystemExtendedHandleInformation, nullptr, 0, &returnLength);
-    if (status != STATUS_INFO_LENGTH_MISMATCH)
-        return;
-
-    ULONG bufferSize = returnLength;
-    PSYSTEM_HANDLE_INFORMATION_EX handleInfo = (PSYSTEM_HANDLE_INFORMATION_EX)malloc(bufferSize);
-    if (!handleInfo)
-        return;
-
-    status = NtQuerySystemInformation(SystemExtendedHandleInformation, handleInfo, bufferSize, &returnLength);
-    if (status)
-    {
-        free(handleInfo);
-        return;
-    }
+	PSYSTEM_HANDLE_INFORMATION_EX handleInfo = nullptr;
+	NTSTATUS status = STATUS_INFO_LENGTH_MISMATCH;
+	do
+	{
+		if (returnLength)
+		{
+			if (handleInfo)
+			{
+				handleInfo = (PSYSTEM_HANDLE_INFORMATION_EX)realloc(handleInfo, returnLength);
+			}
+			else
+			{
+				handleInfo = (PSYSTEM_HANDLE_INFORMATION_EX)malloc(returnLength);
+			}
+		}
+		status = NtQuerySystemInformation(SystemExtendedHandleInformation, handleInfo, returnLength, &returnLength);
+	}
+	while (status == STATUS_INFO_LENGTH_MISMATCH);
 
     //loop handles
     for (int i = 0; i < handleInfo->NumberOfHandles; i++)
@@ -400,7 +405,7 @@ __forceinline void CheckProcessHasMyHandle(void)
             if (!hProcess)
                 continue;
             HANDLE hDupHandle = nullptr;
-            DuplicateHandle(hProcess, (HANDLE)handle.HandleValue, GetCurrentProcess(), &hDupHandle, 0, FALSE, 0);
+            DuplicateHandle(hProcess, (HANDLE)handle.HandleValue, GetCurrentProcess(), &hDupHandle, PROCESS_QUERY_LIMITED_INFORMATION, FALSE, 0);
             if (!hDupHandle)
             {
                 CloseHandle(hProcess);
@@ -408,13 +413,12 @@ __forceinline void CheckProcessHasMyHandle(void)
             }
 
             //check handle access has PROCESS_QUERY_INFORMATION or PROCESS_QUERY_LIMITED_INFORMATION
-            if ((handle.GrantedAccess & PROCESS_QUERY_INFORMATION) == 0 && (handle.GrantedAccess & PROCESS_QUERY_LIMITED_INFORMATION) == 0)
+            /*if ((handle.GrantedAccess & PROCESS_QUERY_INFORMATION) == 0 && (handle.GrantedAccess & PROCESS_QUERY_LIMITED_INFORMATION) == 0)
             {
                 CloseHandle(hProcess);
                 CloseHandle(hDupHandle);
                 continue;
-            }
-
+            }*/
             if (GetProcessId(hDupHandle) != GetCurrentProcessId())
             {
                 CloseHandle(hProcess);
@@ -432,7 +436,7 @@ __forceinline void CheckProcessHasMyHandle(void)
             if (!CheckFileDigitalSignature(path, nullptr, catalogFile, signType, SignChain))
             {
                 //TODO: Send log to server.
-
+				printf("DETECTED/HANDLE/Unknown process has our handle. path: %ws\n", path);
             }
 
             CloseHandle(hProcess);
@@ -443,19 +447,22 @@ __forceinline void CheckProcessHasMyHandle(void)
 __forceinline void CheckProcess(void)
 {
     CheckProcessHasMyHandle();
-    DWORD detectedProcessId = 0;
-    EnumWindows(EnumWindowsCallback, (LPARAM)&detectedProcessId);
-
-    if (detectedProcessId)
+	
+    std::wstring detectedWindowName;
+    EnumWindows(EnumWindowsCallback, (LPARAM)&detectedWindowName);
+	
+    if (!detectedWindowName.empty())
     {
         //TODO: Send log to server.
-        HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, detectedProcessId);
+		printf("DETECTED/WINDOW/Blacklisted windows has been found. name: %ws\n", detectedWindowName.c_str());
+        /*HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, detectedProcessId);
         if (hProcess)
         {
             TerminateProcess(hProcess, 0);
             CloseHandle(hProcess);
-        }
+        }*/
     }
+	return;
     PROCESSENTRY32 pe32{};
     pe32.dwSize = sizeof(PROCESSENTRY32);
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -470,6 +477,7 @@ __forceinline void CheckProcess(void)
             if (wcsstr(pe32.szExeFile, BlacklistedProcessName[i]))
             {
                 //TODO: Send log to server.
+				printf("DETECTED/WINDOW/Blacklisted process has been found. name: %ws\n", pe32.szExeFile);
             }
         }
         bRet = Process32Next(hSnapshot, &pe32);

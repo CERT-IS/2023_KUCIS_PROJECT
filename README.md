@@ -27,33 +27,16 @@ Secure Guardian는 4개의 탐지 스레드를 포함하고 있습니다.
 core.cpp 파일에서 AntiDebugThread, AntiLibraryThread, AntiProcessThread, AntiCodeIntegrityThread 4개의 탐지 스레드를 생성하며 
 각 모듈에서 프로그램 훼손 여부가 탐지되면 서버에 로그를 보내고 사용자에게 알려준 뒤 프로그램이 종료되는 프로텍터
 
-* AntiDebugThread
-
-'''
-코드문
-'''
-테스트 사진첨부
+#### AntiDebugThread
 
 
-* AntiLibraryThread
-'''
-코드문
-'''
-테스트 사진첨부
+#### AntiLibraryThread
 
-* AntiProcessThread
-
-'''
-코드문
-'''
-테스트 사진첨부
+#### AntiProcessThread
 
 
-* AntiCodeIntegrityThread
+##### AntiCodeIntegrityThread
 
-'''
-코드문
-'''
-테스트 사진첨부
+
 
 

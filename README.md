@@ -10,13 +10,12 @@
   
 
 ##### 프로젝트 개요
-***
+
 본 프로젝트는 윈도우 환경에서 C/C++로 개발된 프로그램들의 보안을 강화하기 위해 구현된 프로텍터, Secure Guardian에 대한 설명입니다. 
 Secure Guardian는 시스템 해킹이 발생했다고 판단하는 방법들에 대해 감지, 차단을 목적으로 개발되었습니다.
 
 
 ##### 기능
-***
 Secure Guardian는 4개의 탐지 스레드를 포함하고 있습니다.
 
 * AntiDebugThread  동적 분석을 막기 위해 프로세스 확인, 스레드 레지스터 확인, 하이퍼바이저 탐지 등의 방법을 사용하여 디버그를 탐지합니다.
@@ -26,7 +25,6 @@ Secure Guardian는 4개의 탐지 스레드를 포함하고 있습니다.
 
 
 #### 사용방법
-***
 core.cpp 파일에서 AntiDebugThread, AntiLibraryThread, AntiProcessThread, AntiCodeIntegrityThread 4개의 탐지 스레드를 생성하며 
 각 모듈에서 프로그램 훼손 여부가 탐지되면 서버에 로그를 보내고 사용자에게 알려준 뒤 프로그램이 종료되는 프로텍터
 

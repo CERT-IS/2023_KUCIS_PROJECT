@@ -35,7 +35,7 @@ core.cpp 파일에서 AntiDebugThread, AntiLibraryThread, AntiProcessThread, Ant
 #### AntiDebugThread
 https://github.com/CERT-IS/2023_KUCIS_PROJECT/blob/%231/feature/newProject/Protector/AntiDebug.hpp
 현재 실행 중인 프로그램이 디버그 중인지 아닌지를 검사하는 스레드
-'''
+''' C
 inline bool BasicDebugTriggered()
 {
     if (IsDebuggerPresent())
